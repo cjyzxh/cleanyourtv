@@ -430,6 +430,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
+        // Background app sweeper: start the periodic timeout sweep (idempotent; the accessibility service
+        // also starts it once bound, so this is a second safety net).
+        BackgroundCleaner.startSweeper(this);
         homeAppKeys = RemoteKeys.parseAppKeys(cfg.appKeys);
         appLibrarySelection = cfg.appLibrarySelection;
         libraryOkOpens = cfg.libraryOkOpens;
@@ -1026,6 +1029,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         restartIdleClock();
         promptsPaused = false;
+        // Background app sweeper: coming back to the launcher, note the last launched app as backgrounded.
+        // Approximate fallback for when the accessibility service is not bound yet.
+        BackgroundCleaner.noteLeftApprox(this);
         if (grid.getAdapter() == null) grid.setAdapter(adapter);   // dropped by onTrimMemory
         switch (tileRefresh.onResume(packagesChangedSinceRebuild())) {
             case REBUILD:

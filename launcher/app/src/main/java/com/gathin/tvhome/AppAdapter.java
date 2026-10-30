@@ -531,6 +531,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             return;
         }
+        // Background app sweeper: record the app launched from this launcher (the first sweep layer's scope).
+        BackgroundCleaner.noteLaunched(ctx, e.pkg);
         Intent i = new Intent(Intent.ACTION_MAIN)
                 .setComponent(e.component)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
@@ -549,6 +551,9 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             Intent byAction = LaunchActions.intent(e.pkg, action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             if (ctx.getPackageManager().resolveActivity(byAction, 0) != null) i = byAction;
         }
+        // Background app sweeper (second layer): the app was backgrounded past the timeout, so force a cold
+        // start and drop its stale task. Deliberately after the input branch: an input switch is not an app launch.
+        BackgroundCleaner.coldStartIfNeeded(ctx, e.pkg, i);
         try {
             ctx.startActivity(i);
             if (cinematic) LastOpened.record(ctx, e.pkg);

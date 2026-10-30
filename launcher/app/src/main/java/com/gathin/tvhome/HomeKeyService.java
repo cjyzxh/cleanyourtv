@@ -221,14 +221,15 @@ public class HomeKeyService extends AccessibilityService {
             screenOnReceiver = null;
             powerOnUntil = 0;
         }
-        // home_key_service.xml subscribes to no events, so the redirects ask for window changes only when one is on.
+        // Window changes feed the background app sweeper as well as the redirects, so the listener stays on.
         AccessibilityServiceInfo info = getServiceInfo();
-        if (info != null && (!stockHome.isEmpty() || !powerOnLiveTv.isEmpty() || watchFront)) {
+        if (info != null) {
             info.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
             setServiceInfo(info);
         }
         if (!stockHome.isEmpty() || !powerOnLiveTv.isEmpty()) probeAtBoot();
         armStandbyExit();
+        BackgroundCleaner.startSweeper(this);
         holdAppKeys = RemoteKeys.parseHoldAppKeys(config.appKeys);
         holdAppScancodes = RemoteKeys.parseHoldAppScancodes(config.appKeys);
         // gamepad_passthrough, off by default. Only with key_filter on: off, the service never filters keys.
@@ -303,6 +304,26 @@ public class HomeKeyService extends AccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+        // Background app sweeper: track the package in front unconditionally (activities only, so a dialog or
+        // panel does not count). When a window leaves the foreground, the app that was in front is noted as
+        // backgrounded, which the timeout sweeper and the cold-start fallback both rely on. The "back to the
+        // launcher" case is included, or an app opened before another would never be swept.
+        CharSequence pkgSeq = event.getPackageName();
+        CharSequence clsSeq = event.getClassName();
+        if (pkgSeq != null && clsSeq != null) {
+            try {
+                ComponentName window = new ComponentName(pkgSeq.toString(), clsSeq.toString());
+                getPackageManager().getActivityInfo(window, 0);
+                String win = window.getPackageName();
+                String old = BackgroundCleaner.frontPkg();
+                BackgroundCleaner.noteFront(win);
+                if (!old.isEmpty() && !old.equals(win) && !old.equals(getPackageName())) {
+                    BackgroundCleaner.noteLeft(old);
+                }
+            } catch (PackageManager.NameNotFoundException notAnActivity) {
+                // a dialog, panel or overlay: the app under it is still in front
+            }
+        }
         // app_keys "front:" entries: only activities count, so a toast or the volume bar doesn't change the app in front.
         if ((!frontAppKeys.isEmpty() || !frontAppScancodes.isEmpty())
                 && event.getPackageName() != null && event.getClassName() != null) {
