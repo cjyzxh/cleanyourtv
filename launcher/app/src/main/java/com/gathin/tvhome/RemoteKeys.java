@@ -418,9 +418,13 @@ final class RemoteKeys {
         String guide = guidePackage(pkg);
         if (guide != null) {
             // The program guide, asked for the way Android TV's Live TV apps take it: the programs directory.
-            start(ctx, new Intent(Intent.ACTION_VIEW)
+            // Background app sweeper: the guide is a third-party app, record it and cold-start when overdue.
+            BackgroundCleaner.noteLaunched(ctx, guide);
+            Intent view = new Intent(Intent.ACTION_VIEW)
                     .setDataAndType(TvContract.Programs.CONTENT_URI, "vnd.android.cursor.dir/program")
-                    .setPackage(guide));
+                    .setPackage(guide);
+            BackgroundCleaner.coldStartIfNeeded(ctx, guide, view);
+            start(ctx, view);
             return;
         }
         String inputId = inputId(pkg);
@@ -439,7 +443,11 @@ final class RemoteKeys {
         ComponentName activity = isActivity(pkg) ? ComponentName.unflattenFromString(pkg) : null;
         if (activity != null) {
             try {
-                ctx.startActivity(new Intent().setComponent(activity).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                // Background app sweeper: a direct remote-key activity launch is an app launch too.
+                BackgroundCleaner.noteLaunched(ctx, activity.getPackageName());
+                Intent direct = new Intent().setComponent(activity).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                BackgroundCleaner.coldStartIfNeeded(ctx, activity.getPackageName(), direct);
+                ctx.startActivity(direct);
             } catch (ActivityNotFoundException | SecurityException ignored) {
             }
             return;
@@ -447,6 +455,10 @@ final class RemoteKeys {
         Intent open = ctx.getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
         if (open == null) open = ctx.getPackageManager().getLaunchIntentForPackage(pkg);
         if (open == null) return;
+        // Background app sweeper: a remote-key app launch is recorded and cold-started when overdue too.
+        String base = open.getPackage() != null ? open.getPackage() : pkg;
+        BackgroundCleaner.noteLaunched(ctx, base);
+        BackgroundCleaner.coldStartIfNeeded(ctx, base, open);
         try {
             ctx.startActivity(open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } catch (ActivityNotFoundException ignored) {

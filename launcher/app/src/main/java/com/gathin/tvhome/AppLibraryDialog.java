@@ -507,11 +507,15 @@ final class AppLibraryDialog {
 
     private void open(ResolveInfo app) {
         close();
+        // Background app sweeper: record the app opened from the library, then cold-start it if backgrounded
+        // past the timeout (same two layers as the home tiles).
+        BackgroundCleaner.noteLaunched(activity, app.activityInfo.packageName);
         Intent intent = new Intent(Intent.ACTION_MAIN).setComponent(
                 new ComponentName(app.activityInfo.packageName, app.activityInfo.name));
         // TV apps keep the leanback launch intent, so an app already running resumes instead of restarting.
         if (tvPackages.contains(app.activityInfo.packageName)) intent.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+        BackgroundCleaner.coldStartIfNeeded(activity, app.activityInfo.packageName, intent);
         try { activity.startActivity(intent); }
         catch (ActivityNotFoundException | SecurityException e) {
             Toast.makeText(activity, activity.getString(R.string.cant_open, label(app)), Toast.LENGTH_SHORT).show();

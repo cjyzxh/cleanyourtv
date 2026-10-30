@@ -89,6 +89,28 @@
         </LinearLayout>
 
         <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/bg_kill_label"
+            android:textColor="#FFFFFFFF"
+            android:textSize="20sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <TextView android:id="@+id/bgKillOff" style="@style/SettingsColumnChoice" android:text="@string/bg_kill_off" />
+            <TextView android:id="@+id/bgKill0" style="@style/SettingsColumnChoice" android:text="0" />
+            <TextView android:id="@+id/bgKill5" style="@style/SettingsColumnChoice" android:text="5" />
+            <TextView android:id="@+id/bgKill30" style="@style/SettingsColumnChoice" android:text="30" />
+            <TextView android:id="@+id/bgKill60" style="@style/SettingsColumnChoice" android:text="60" />
+            <TextView android:id="@+id/bgKill120" style="@style/SettingsColumnChoice" android:text="120" />
+        </LinearLayout>
+
+        <TextView
             android:id="@+id/wallpaperChoice"
             style="@style/SettingsRow"
             android:layout_marginTop="28dp" />
